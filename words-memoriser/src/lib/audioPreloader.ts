@@ -1,4 +1,4 @@
-// src/lib/audioPreloader.ts - Simplified version without TypeScript errors
+// src/lib/audioPreloader.ts - Clean version without ESLint errors
 import { Vocabulary } from '@/types';
 import { audioCacheManager } from './audioCache';
 
@@ -74,8 +74,8 @@ class AudioPreloader {
         }
       }
       this.log(`📦 Cache check complete: ${cachedCount}/${totalWords} found`);
-    } catch (error) {
-      this.log(`⚠️ Cache check failed: ${error}`);
+    } catch {
+      this.log('⚠️ Cache check failed');
     }
 
     if (cachedCount === totalWords) {
@@ -158,20 +158,17 @@ class AudioPreloader {
       if (proxyResponse.ok) {
         this.log('✅ Proxy route working!');
         return true;
-      } else {
-        this.log(`❌ Proxy route failed: ${proxyResponse.status}`);
       }
-    } catch (error) {
-      this.log(`❌ Proxy route error: ${error}`);
+      this.log(`❌ Proxy route failed: ${proxyResponse.status}`);
+    } catch {
+      this.log('❌ Proxy route error');
     }
 
     // Quick test for direct access (will likely fail due to CORS)
     try {
       this.log('Testing direct TTS access...');
-      // We'll just check if we can make the request without CORS errors
       const testUrl = 'https://translate.google.com/translate_tts?ie=UTF-8&q=test&tl=en&client=tw-ob';
       
-      // Use a HEAD request with no-cors mode to avoid CORS but still test connectivity
       await fetch(testUrl, { 
         method: 'HEAD',
         mode: 'no-cors',
@@ -229,20 +226,17 @@ class AudioPreloader {
         this.log(`❌ Failed to load: ${word.english}`);
       }
 
-      // Small delay
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     // If test batch failed too much, don't continue
     if (errorCount >= testWords.length * 0.7) {
       this.log('❌ Test batch mostly failed, stopping here');
-      // Mark all remaining words as failed
       for (let i = testWords.length; i < words.length; i++) {
         failedWords.push(words[i].english);
         errorCount++;
       }
     } else {
-      // Test batch worked, continue with remaining words
       this.log('✅ Test batch successful, continuing with remaining words');
       
       for (let i = testWords.length; i < words.length; i++) {
@@ -303,15 +297,13 @@ class AudioPreloader {
 
     for (const url of directUrls) {
       try {
-        // Test with a simple fetch (will fail with CORS but we can try)
-        const response = await fetch(url, { 
+        await fetch(url, { 
           method: 'HEAD',
           mode: 'no-cors',
           signal: AbortSignal.timeout(3000)
         });
-        // If we get here without error, return the URL
         return url;
-      } catch (error) {
+      } catch {
         continue;
       }
     }
@@ -358,7 +350,6 @@ class AudioPreloader {
         debugInfo: [...this.debugLogs]
       });
 
-      // Small delay for visual feedback
       if (i % 10 === 0) {
         await new Promise(resolve => setTimeout(resolve, 50));
       }
