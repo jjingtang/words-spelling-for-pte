@@ -74,8 +74,8 @@ class AudioPreloader {
         }
       }
       this.log(`📦 Cache check complete: ${cachedCount}/${totalWords} found`);
-    } catch {
-      this.log('⚠️ Cache check failed');
+    } catch (cacheError) {
+      this.log(`⚠️ Cache check failed: ${cacheError instanceof Error ? cacheError.message : 'Unknown error'}`);
     }
 
     if (cachedCount === totalWords) {
@@ -160,8 +160,8 @@ class AudioPreloader {
         return true;
       }
       this.log(`❌ Proxy route failed: ${proxyResponse.status}`);
-    } catch {
-      this.log('❌ Proxy route error');
+    } catch (proxyError) {
+      this.log(`❌ Proxy route error: ${proxyError instanceof Error ? proxyError.message : 'Network error'}`);
     }
 
     // Quick test for direct access (will likely fail due to CORS)
@@ -177,8 +177,8 @@ class AudioPreloader {
       
       this.log('✅ Direct TTS might be accessible');
       return true;
-    } catch {
-      this.log('❌ Direct TTS failed');
+    } catch (directError) {
+      this.log(`❌ Direct TTS failed: ${directError instanceof Error ? directError.message : 'CORS blocked'}`);
     }
 
     this.log('❌ All TTS services failed');
@@ -285,8 +285,8 @@ class AudioPreloader {
       if (proxyResponse.ok) {
         return proxyUrl;
       }
-    } catch {
-      this.log(`Proxy failed for ${word}`);
+    } catch (urlError) {
+      this.log(`Proxy failed for ${word}: ${urlError instanceof Error ? urlError.message : 'Unknown error'}`);
     }
 
     // Try direct URLs (will likely fail due to CORS)
@@ -303,7 +303,8 @@ class AudioPreloader {
           signal: AbortSignal.timeout(3000)
         });
         return url;
-      } catch {
+      } catch (fetchError) {
+        this.log(`URL failed for ${word}: ${fetchError instanceof Error ? fetchError.message : 'Network error'}`);
         continue;
       }
     }
