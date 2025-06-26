@@ -463,7 +463,7 @@ export default function AudioLoadingPage({ vocabulary, onComplete, onSkip }: Aud
             </div>
             <div className="flex items-center">
               <WifiOff className="h-4 w-4 mr-2" />
-              <span><strong>Browser Voice:</strong> Works offline, uses your device's voice synthesis</span>
+              <span><strong>Browser Voice:</strong> Works offline, uses your device&apos;s voice synthesis</span>
             </div>
             <div className="flex items-center">
               <Volume2 className="h-4 w-4 mr-2" />

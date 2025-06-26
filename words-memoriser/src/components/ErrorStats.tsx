@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { ErrorStats, Vocabulary } from '@/types';
 import { OverallStats } from './ErrorStats/OverallStats';
@@ -18,7 +18,7 @@ export default function ErrorStatsComponent({ vocabulary, onBack }: ErrorStatsPr
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'errorRate' | 'errorCount' | 'totalAttempts'>('errorRate');
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/error-stats', {
@@ -36,11 +36,11 @@ export default function ErrorStatsComponent({ vocabulary, onBack }: ErrorStatsPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [vocabulary]);
 
   useEffect(() => {
     fetchStats();
-  }, [vocabulary, fetchStats]);
+  }, [fetchStats]);
 
   const sortedStats = [...errorStats].sort((a, b) => {
     switch (sortBy) {

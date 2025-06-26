@@ -287,12 +287,12 @@ class AudioPreloader {
     // Try proxy first
     try {
       const proxyUrl = `/api/tts-proxy?text=${encodeURIComponent(word)}`;
-      const response = await fetch(proxyUrl, { method: 'HEAD' });
-      if (response.ok) {
+      const proxyResponse = await fetch(proxyUrl, { method: 'HEAD' });
+      if (proxyResponse.ok) {
         return proxyUrl;
       }
-    } catch (error) {
-      this.log(`Proxy failed for ${word}: ${error}`);
+    } catch {
+      this.log(`Proxy failed for ${word}`);
     }
 
     // Try direct URLs (will likely fail due to CORS)
