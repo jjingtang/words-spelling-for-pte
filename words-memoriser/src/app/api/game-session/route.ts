@@ -3,7 +3,7 @@ import { GameSession } from '@/types';
 import { generateId } from '@/lib/utils';
 
 // In-memory storage (replace with database in production)
-let gameSessions: GameSession[] = [];
+const gameSessions: GameSession[] = [];
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,8 +1,9 @@
-import { Vocabulary } from "@/types"
+// src/lib/utils.ts
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
 
-// Simple className utility without clsx dependency
-export function cn(...inputs: (string | undefined | null | boolean)[]): string {
-  return inputs.filter(Boolean).join(' ');
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
 
 export function shuffleArray<T>(array: T[]): T[] {
@@ -19,21 +20,9 @@ export function generateId(): string {
 }
 
 export function getAudioUrl(text: string, language: 'en' | 'zh-CN' = 'en'): string {
-  // Method 1: Google Translate TTS (most reliable)
-  const encodedText = encodeURIComponent(text);
-  const randomId = Math.random().toString(36).substring(2);
-  return `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=${language}&total=1&idx=0&textlen=${text.length}&client=tw-ob&prev=input&ttsspeed=0.24&tk=${randomId}`;
-}
-
-// Alternative audio URL generators
-export function getBackupAudioUrl(text: string): string {
-  // Method 2: ResponsiveVoice (requires user interaction)
-  return `https://code.responsivevoice.org/getvoice.php?t=${encodeURIComponent(text)}&tl=en&sv=g1&vn=&pitch=0.5&rate=0.5&vol=1`;
-}
-
-export function getFreeDictionaryAudioUrl(word: string): string {
-  // Method 3: Free Dictionary API (English only, may not always have audio)
-  return `https://api.dictionaryapi.dev/api/v2/entries/en/${word}`;
+  // Using Google Translate TTS (unofficial but free)
+  const encodedText = encodeURIComponent(text.replace(/ /g, '+'));
+  return `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${language}&q=${encodedText}`;
 }
 
 export function normalizeText(text: string): string {

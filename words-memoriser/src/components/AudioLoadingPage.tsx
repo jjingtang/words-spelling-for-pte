@@ -206,7 +206,7 @@ export default function AudioLoadingPage({ vocabulary, onComplete, onSkip }: Aud
                 <Play className="h-12 w-12 text-green-600 mx-auto mb-4" />
                 <h2 className="text-xl font-semibold text-gray-800 mb-2">Ready to Load Audio?</h2>
                 <p className="text-gray-600 mb-4">
-                  We'll try to download pronunciation audio for your vocabulary. This may take a few minutes.
+                  We&apos;ll try to download pronunciation audio for your vocabulary. This may take a few minutes.
                 </p>
                 
                 {/* Warning about potential issues */}
@@ -217,7 +217,7 @@ export default function AudioLoadingPage({ vocabulary, onComplete, onSkip }: Aud
                   </div>
                   <p className="text-sm text-yellow-700 mt-1">
                     Audio loading requires internet access and may be blocked by some networks or browsers. 
-                    Don't worry - we have backup options if this fails!
+                    Don&apos;t worry - we have backup options if this fails!
                   </p>
                 </div>
               </div>
@@ -399,7 +399,7 @@ export default function AudioLoadingPage({ vocabulary, onComplete, onSkip }: Aud
                       <li>• Check your internet connection</li>
                       <li>• Some corporate networks block TTS services</li>
                       <li>• Browser voice synthesis works offline</li>
-                      <li>• Try refreshing and using "Browser Voice" option</li>
+                      <li>• Try refreshing and using &quot;Browser Voice&quot; option</li>
                     </ul>
                   </div>
                 </div>

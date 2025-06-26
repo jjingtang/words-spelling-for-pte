@@ -180,8 +180,8 @@ class AudioPreloader {
       
       this.log('✅ Direct TTS might be accessible');
       return true;
-    } catch (error) {
-      this.log(`❌ Direct TTS failed: ${error}`);
+    } catch {
+      this.log('❌ Direct TTS failed');
     }
 
     this.log('❌ All TTS services failed');

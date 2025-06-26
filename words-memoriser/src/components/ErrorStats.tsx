@@ -40,7 +40,7 @@ export default function ErrorStatsComponent({ vocabulary, onBack }: ErrorStatsPr
 
   useEffect(() => {
     fetchStats();
-  }, [vocabulary]);
+  }, [vocabulary, fetchStats]);
 
   const sortedStats = [...errorStats].sort((a, b) => {
     switch (sortBy) {
