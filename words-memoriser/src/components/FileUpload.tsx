@@ -12,6 +12,12 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+
+  const addDebugInfo = (info: string) => {
+    console.log(info);
+    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${info}`]);
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -39,39 +45,75 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
   };
 
   const handleFile = async (file: File) => {
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      setMessage({ type: 'error', text: 'Please upload an Excel file (.xlsx or .xls)' });
+    addDebugInfo(`File selected: ${file.name} (${file.size} bytes, ${file.type})`);
+    
+    // Clear previous messages
+    setMessage(null);
+    setDebugInfo([]);
+    
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+      const errorMsg = 'Please upload an Excel file (.xlsx or .xls)';
+      setMessage({ type: 'error', text: errorMsg });
+      addDebugInfo(`Error: ${errorMsg}`);
+      return;
+    }
+
+    // Validate file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      const errorMsg = 'File too large. Please upload a file smaller than 10MB.';
+      setMessage({ type: 'error', text: errorMsg });
+      addDebugInfo(`Error: ${errorMsg}`);
       return;
     }
 
     setIsUploading(true);
-    setMessage(null);
+    addDebugInfo('Starting upload...');
 
     try {
       const formData = new FormData();
       formData.append('file', file);
+      addDebugInfo('FormData created');
 
+      addDebugInfo('Sending request to /api/upload');
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
+      addDebugInfo(`Response status: ${response.status} ${response.statusText}`);
+      
+      // Log response headers
+      const contentType = response.headers.get('content-type');
+      addDebugInfo(`Content-Type: ${contentType}`);
+
+      // Check if response is JSON
+      if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        addDebugInfo(`Non-JSON response: ${responseText.substring(0, 200)}...`);
+        throw new Error(`Server returned non-JSON response. Status: ${response.status}`);
+      }
+
       const result: UploadResponse = await response.json();
+      addDebugInfo(`Parsed JSON response: ${JSON.stringify(result, null, 2)}`);
 
       if (result.success && result.vocabulary) {
-        setMessage({ 
-          type: 'success', 
-          text: `Successfully uploaded ${result.vocabularyCount} vocabulary entries!` 
-        });
+        const successMsg = `Successfully uploaded ${result.vocabularyCount} vocabulary entries!`;
+        setMessage({ type: 'success', text: successMsg });
+        addDebugInfo(successMsg);
         onUploadSuccess(result.vocabulary);
       } else {
         setMessage({ type: 'error', text: result.message });
+        addDebugInfo(`API Error: ${result.message}`);
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Error uploading file. Please try again.' });
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred';
+      setMessage({ type: 'error', text: `Upload failed: ${errorMsg}` });
+      addDebugInfo(`Fetch Error: ${errorMsg}`);
       console.error('Upload error:', error);
     } finally {
       setIsUploading(false);
+      addDebugInfo('Upload process completed');
     }
   };
 
@@ -128,6 +170,7 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
             <p>• Column A: English words</p>
             <p>• Column B: Chinese translations</p>
             <p>• First row can be headers (will be skipped)</p>
+            <p>• Max file size: 10MB</p>
           </div>
         </div>
       </div>
@@ -148,6 +191,51 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
           <span>{message.text}</span>
         </div>
       )}
+
+      {/* Debug Information */}
+      {debugInfo.length > 0 && (
+        <div className="mt-6 p-4 bg-gray-100 rounded-lg">
+          <details>
+            <summary className="cursor-pointer font-medium text-gray-700 mb-2">
+              Debug Information ({debugInfo.length} entries)
+            </summary>
+            <div className="space-y-1 text-xs text-gray-600 max-h-60 overflow-y-auto">
+              {debugInfo.map((info, index) => (
+                <div key={index} className="font-mono">{info}</div>
+              ))}
+            </div>
+          </details>
+        </div>
+      )}
+
+      {/* Sample Excel Format */}
+      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h3 className="font-medium text-blue-800 mb-2">📊 Sample Excel Format:</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-blue-100">
+                <th className="px-3 py-1 text-left border border-blue-200">A (English)</th>
+                <th className="px-3 py-1 text-left border border-blue-200">B (Chinese)</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-700">
+              <tr>
+                <td className="px-3 py-1 border border-blue-200">hello</td>
+                <td className="px-3 py-1 border border-blue-200">你好</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-1 border border-blue-200">world</td>
+                <td className="px-3 py-1 border border-blue-200">世界</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-1 border border-blue-200">book</td>
+                <td className="px-3 py-1 border border-blue-200">书</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,9 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, RotateCcw, Volume2, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
-import { Vocabulary, GameMode, GameSession } from '@/types';
-import { shuffleArray, getHint, normalizeText } from '@/lib/utils';
+import React, { useState, useEffect } from 'react';
+import { RotateCcw, BarChart3 } from 'lucide-react';
+import { Vocabulary, GameMode } from '@/types';
+import { shuffleArray, normalizeText } from '@/lib/utils';
+
+// Component imports
+import { AudioPlayer } from './AudioPlayer';
+import { LengthHintMode, FirstLetterMode, NoHintMode } from './GameModes';
+import { GameStats, ProgressBar, ResultDisplay } from './Stats';
+import { GameInput, ActionButtons, ShowAnswerModal } from './GameInput';
 
 interface VocabularyGameProps {
   vocabulary: Vocabulary[];
@@ -17,19 +23,22 @@ const GAME_MODES: GameMode[] = [
 ];
 
 export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGameProps) {
+  // Game state
   const [currentMode, setCurrentMode] = useState<GameMode['id']>('length');
   const [currentVocab, setCurrentVocab] = useState<Vocabulary | null>(null);
   const [shuffledVocab, setShuffledVocab] = useState<Vocabulary[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // User interaction state
   const [userAnswer, setUserAnswer] = useState('');
   const [showResult, setShowResult] = useState<'correct' | 'incorrect' | null>(null);
-  const [score, setScore] = useState({ correct: 0, total: 0 });
-  const [startTime, setStartTime] = useState<number>(0);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [showAnswerModal, setShowAnswerModal] = useState(false);
   
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Statistics
+  const [score, setScore] = useState({ correct: 0, total: 0, skipped: 0 });
+  const [startTime, setStartTime] = useState<number>(0);
 
+  // Initialize vocabulary on load
   useEffect(() => {
     if (vocabulary.length > 0) {
       const shuffled = shuffleArray(vocabulary);
@@ -39,25 +48,9 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
     }
   }, [vocabulary]);
 
-  useEffect(() => {
-    if (inputRef.current && !showResult) {
-      inputRef.current.focus();
-    }
-  }, [currentVocab, showResult]);
-
-  const playAudio = () => {
-    if (currentVocab?.audioUrl && audioRef.current) {
-      setIsPlaying(true);
-      audioRef.current.src = currentVocab.audioUrl;
-      audioRef.current.play()
-        .then(() => {
-          setStartTime(Date.now());
-        })
-        .catch(err => console.error('Audio play error:', err))
-        .finally(() => {
-          setTimeout(() => setIsPlaying(false), 1000);
-        });
-    }
+  // Game action handlers
+  const handlePlayStart = () => {
+    setStartTime(Date.now());
   };
 
   const submitAnswer = async () => {
@@ -66,7 +59,7 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
     const isCorrect = normalizeText(userAnswer) === normalizeText(currentVocab.english);
     const timeSpent = startTime ? Date.now() - startTime : 0;
 
-    // Save game session
+    // Save game session to API
     try {
       await fetch('/api/game-session', {
         method: 'POST',
@@ -85,19 +78,33 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
 
     setShowResult(isCorrect ? 'correct' : 'incorrect');
     setScore(prev => ({
+      ...prev,
       correct: prev.correct + (isCorrect ? 1 : 0),
       total: prev.total + 1
     }));
   };
 
+  const skipWord = () => {
+    setScore(prev => ({
+      ...prev,
+      skipped: prev.skipped + 1
+    }));
+    nextVocab();
+  };
+
+  const showAnswer = () => {
+    setShowAnswerModal(true);
+  };
+
   const nextVocab = () => {
     setShowResult(null);
     setUserAnswer('');
+    setShowAnswerModal(false);
     
     const nextIndex = (currentIndex + 1) % shuffledVocab.length;
     
     if (nextIndex === 0) {
-      // Reshuffle when we complete a round
+      // Reshuffle when completing a round
       const newShuffled = shuffleArray(vocabulary);
       setShuffledVocab(newShuffled);
       setCurrentVocab(newShuffled[0]);
@@ -115,46 +122,61 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
     setCurrentIndex(0);
     setUserAnswer('');
     setShowResult(null);
-    setScore({ correct: 0, total: 0 });
+    setShowAnswerModal(false);
+    setScore({ correct: 0, total: 0, skipped: 0 });
     setStartTime(0);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      if (showResult) {
-        nextVocab();
-      } else {
-        submitAnswer();
-      }
+  // Render game mode hint
+  const renderGameModeHint = () => {
+    if (!currentVocab) return null;
+
+    switch (currentMode) {
+      case 'length':
+        return <LengthHintMode vocabulary={currentVocab} />;
+      case 'first-letter':
+        return <FirstLetterMode vocabulary={currentVocab} />;
+      case 'no-hint':
+        return <NoHintMode vocabulary={currentVocab} />;
+      default:
+        return null;
     }
   };
 
   if (!currentVocab) {
-    return <div className="text-center p-8">Loading vocabulary...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading vocabulary...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="w-full max-w-4xl mx-auto p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      {/* Header Section */}
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 space-y-4 lg:space-y-0">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Vocabulary Game</h1>
-          <p className="text-gray-600">
-            Score: {score.correct}/{score.total} 
-            {score.total > 0 && ` (${Math.round((score.correct / score.total) * 100)}%)`}
-          </p>
+          <GameStats 
+            correct={score.correct}
+            total={score.total}
+            skipped={score.skipped}
+          />
         </div>
         <div className="flex gap-2">
           <button
             onClick={onShowStats}
-            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-md"
           >
             <BarChart3 className="h-4 w-4 mr-2" />
-            View Stats
+            Stats
           </button>
           <button
             onClick={resetGame}
-            className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-md"
           >
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset
@@ -164,15 +186,15 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
 
       {/* Game Mode Selection */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-3">Game Mode:</h3>
+        <h3 className="text-lg font-semibold mb-3">Difficulty Mode:</h3>
         <div className="flex flex-wrap gap-2">
           {GAME_MODES.map(mode => (
             <button
               key={mode.id}
               onClick={() => setCurrentMode(mode.id)}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
                 currentMode === mode.id
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-blue-600 text-white shadow-md'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
@@ -189,102 +211,60 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
       <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
         {/* Chinese Word Display */}
         <div className="text-center mb-8">
-          <h2 className="text-4xl font-bold text-gray-800 mb-4">{currentVocab.chinese}</h2>
+          <h2 className="text-5xl font-bold text-gray-800 mb-6">{currentVocab.chinese}</h2>
           
-          {/* Audio Button */}
-          <button
-            onClick={playAudio}
-            disabled={isPlaying}
-            className={`flex items-center mx-auto px-6 py-3 rounded-lg transition-colors ${
-              isPlaying
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700'
-            } text-white`}
-          >
-            {isPlaying ? (
-              <Volume2 className="h-5 w-5 mr-2 animate-pulse" />
-            ) : (
-              <Play className="h-5 w-5 mr-2" />
-            )}
-            {isPlaying ? 'Playing...' : 'Listen to Pronunciation'}
-          </button>
-
-          <audio ref={audioRef} className="hidden" />
+          {/* Audio Player */}
+          <AudioPlayer 
+            text={currentVocab.english} 
+            onPlayStart={handlePlayStart}
+          />
         </div>
 
-        {/* Hint */}
-        <div className="text-center mb-6">
-          <p className="text-lg text-gray-600">
-            {getHint(currentVocab.english, currentMode)}
-          </p>
-        </div>
+        {/* Game Mode Hint */}
+        {renderGameModeHint()}
 
-        {/* Input Area */}
-        <div className="max-w-md mx-auto">
+        {/* Input and Actions Area */}
+        <div className="max-w-lg mx-auto">
           {showResult ? (
-            <div className="text-center">
-              <div className={`flex items-center justify-center mb-4 ${
-                showResult === 'correct' ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {showResult === 'correct' ? (
-                  <CheckCircle className="h-8 w-8 mr-2" />
-                ) : (
-                  <XCircle className="h-8 w-8 mr-2" />
-                )}
-                <span className="text-xl font-semibold">
-                  {showResult === 'correct' ? 'Correct!' : 'Incorrect'}
-                </span>
-              </div>
-              
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-gray-600">Your answer: <span className="font-medium">{userAnswer}</span></p>
-                <p className="text-gray-600">Correct answer: <span className="font-medium text-green-600">{currentVocab.english}</span></p>
-              </div>
-
-              <button
-                onClick={nextVocab}
-                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Next Word
-              </button>
-            </div>
+            <ResultDisplay
+              isCorrect={showResult === 'correct'}
+              userAnswer={userAnswer}
+              correctAnswer={currentVocab.english}
+              onNext={nextVocab}
+            />
           ) : (
-            <div>
-              <input
-                ref={inputRef}
-                type="text"
+            <div className="space-y-4">
+              <GameInput
                 value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type the English word..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg"
+                onChange={setUserAnswer}
+                onSubmit={submitAnswer}
+                autoFocus={!showAnswerModal}
               />
-              <button
-                onClick={submitAnswer}
-                disabled={!userAnswer.trim()}
-                className={`w-full mt-4 px-6 py-3 rounded-lg transition-colors ${
-                  userAnswer.trim()
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                Submit Answer
-              </button>
+              
+              <ActionButtons
+                userAnswer={userAnswer}
+                onSubmit={submitAnswer}
+                onShowAnswer={showAnswer}
+                onSkip={skipWord}
+              />
             </div>
           )}
         </div>
       </div>
 
-      {/* Progress */}
-      <div className="text-center text-gray-600">
-        <p>Word {currentIndex + 1} of {shuffledVocab.length}</p>
-        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-          <div 
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${((currentIndex + 1) / shuffledVocab.length) * 100}%` }}
-          />
-        </div>
-      </div>
+      {/* Progress Bar */}
+      <ProgressBar 
+        current={currentIndex + 1} 
+        total={shuffledVocab.length} 
+      />
+
+      {/* Show Answer Modal */}
+      <ShowAnswerModal
+        word={currentVocab.english}
+        isOpen={showAnswerModal}
+        onClose={() => setShowAnswerModal(false)}
+        onNext={nextVocab}
+      />
     </div>
   );
 }
