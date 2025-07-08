@@ -193,15 +193,6 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
     setStartTime(0);
   };
 
-  // Clear all data function
-  const clearAllData = () => {
-    if (confirm('This will clear all your learning progress. Are you sure?')) {
-      gameSessionStorage.clearSessions();
-      resetGame();
-      alert('All data cleared!');
-    }
-  };
-
   // Render game mode hint
   const renderGameModeHint = () => {
     if (!currentVocab) return null;
