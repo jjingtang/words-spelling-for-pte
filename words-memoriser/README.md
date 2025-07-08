@@ -23,7 +23,7 @@ A modern, interactive vocabulary learning application specifically designed for 
 ## 🚀 Quick Start for Users
 
 ### 1. Access the Application
-Visit the deployed application at: `https://your-app.vercel.app` (replace with your actual URL)
+Visit the deployed application at: `https://words-spelling-for-pte.vercel.app/` (replace with your actual URL)
 
 ### 2. Prepare Your Vocabulary File
 Create an Excel file (.xlsx or .xls) with this format:

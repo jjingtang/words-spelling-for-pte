@@ -1,9 +1,11 @@
+// src/components/VocabularyGame.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { RotateCcw, BarChart3 } from 'lucide-react';
 import { Vocabulary, GameMode } from '@/types';
 import { shuffleArray, normalizeText } from '@/lib/utils';
+import { gameSessionStorage } from '@/lib/localStorage';
 
 // Component imports
 import { AudioPlayer } from './AudioPlayer';
@@ -17,7 +19,7 @@ interface VocabularyGameProps {
 }
 
 const GAME_MODES: GameMode[] = [
-  { id: 'length', name: 'Length Hint', description: 'Shows the number of letters' },
+  { id: 'length', name: 'Translation', description: 'Shows the other language' },
   { id: 'first-letter', name: 'First Letter', description: 'Shows the first letter' },
   { id: 'no-hint', name: 'No Hint', description: 'No hints provided' }
 ];
@@ -59,9 +61,9 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
     const isCorrect = normalizeText(userAnswer) === normalizeText(currentVocab.english);
     const timeSpent = startTime ? Date.now() - startTime : 0;
 
-    // Save game session to API
+    // Save game session to API and localStorage
     try {
-      await fetch('/api/game-session', {
+      const response = await fetch('/api/game-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -72,8 +74,16 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
           timeSpent
         })
       });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Save the session to localStorage
+        gameSessionStorage.saveSession(data.session);
+      }
     } catch (error) {
       console.error('Error saving game session:', error);
+      // Even if API fails, we can still continue the game
     }
 
     setShowResult(isCorrect ? 'correct' : 'incorrect');
@@ -84,7 +94,35 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
     }));
   };
 
-  const skipWord = () => {
+  const skipWord = async () => {
+    if (!currentVocab) return;
+
+    const timeSpent = startTime ? Date.now() - startTime : 0;
+
+    // Record skip as an attempt
+    try {
+      const response = await fetch('/api/game-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vocabularyId: currentVocab.id,
+          mode: currentMode,
+          userAnswer: '[SKIPPED]',
+          correctAnswer: currentVocab.english,
+          timeSpent
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Save the session to localStorage
+        gameSessionStorage.saveSession(data.session);
+      }
+    } catch (error) {
+      console.error('Error saving skip session:', error);
+    }
+
     setScore(prev => ({
       ...prev,
       skipped: prev.skipped + 1
@@ -92,7 +130,35 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
     nextVocab();
   };
 
-  const showAnswer = () => {
+  const showAnswer = async () => {
+    if (!currentVocab) return;
+
+    const timeSpent = startTime ? Date.now() - startTime : 0;
+
+    // Record showing answer as an attempt (incorrect)
+    try {
+      const response = await fetch('/api/game-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vocabularyId: currentVocab.id,
+          mode: currentMode,
+          userAnswer: '[SHOWED_ANSWER]',
+          correctAnswer: currentVocab.english,
+          timeSpent
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Save the session to localStorage
+        gameSessionStorage.saveSession(data.session);
+      }
+    } catch (error) {
+      console.error('Error saving show answer session:', error);
+    }
+
     setShowAnswerModal(true);
   };
 
@@ -127,6 +193,15 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
     setStartTime(0);
   };
 
+  // Clear all data function
+  const clearAllData = () => {
+    if (confirm('This will clear all your learning progress. Are you sure?')) {
+      gameSessionStorage.clearSessions();
+      resetGame();
+      alert('All data cleared!');
+    }
+  };
+
   // Render game mode hint
   const renderGameModeHint = () => {
     if (!currentVocab) return null;
@@ -159,7 +234,7 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-8 space-y-4 lg:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Vocabulary Game</h1>
+          <h1 className="text-3xl font-bold text-gray-800">PTE Vocabulary</h1>
           <GameStats 
             correct={score.correct}
             total={score.total}
@@ -209,14 +284,13 @@ export default function VocabularyGame({ vocabulary, onShowStats }: VocabularyGa
 
       {/* Game Area */}
       <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
-        {/* Chinese Word Display */}
+        {/* Display */}
         <div className="text-center mb-8">
-          <h2 className="text-5xl font-bold text-gray-800 mb-6">{currentVocab.chinese}</h2>
-          
           {/* Audio Player */}
           <AudioPlayer 
             text={currentVocab.english} 
             onPlayStart={handlePlayStart}
+            preloadedUrl={currentVocab.audioUrl}
           />
         </div>
 

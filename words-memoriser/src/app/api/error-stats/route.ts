@@ -1,24 +1,12 @@
+// src/app/api/error-stats/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ErrorStats, GameSession, Vocabulary } from '@/types';
-
-// This would typically come from your database
-async function getGameSessions(): Promise<GameSession[]> {
-  // For demo, fetch from the game-session API
-  try {
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/game-session`);
-    const data = await response.json();
-    return data.sessions || [];
-  } catch {
-    return [];
-  }
-}
+import { ErrorStats, Vocabulary } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const { vocabulary }: { vocabulary: Vocabulary[] } = await request.json();
-    const sessions = await getGameSessions();
+    const { vocabulary, sessions }: { vocabulary: Vocabulary[], sessions: any[] } = await request.json();
 
-    // Calculate error statistics
+    // Calculate error statistics using sessions passed from client
     const errorStats: ErrorStats[] = vocabulary.map(vocab => {
       const vocabSessions = sessions.filter(s => s.vocabularyId === vocab.id);
       const totalAttempts = vocabSessions.length;

@@ -11,9 +11,8 @@ interface LengthHintModeProps {
 export const LengthHintMode: React.FC<LengthHintModeProps> = ({ vocabulary }) => {
   return (
     <div className="text-center mb-8">
-      <div className="bg-blue-50 rounded-lg p-4 inline-block">
-        <p className="text-lg text-blue-800 font-medium">
-          📏 {vocabulary.english.length} letters
+      <div className="p-2 inline-block">
+        <p className="text-3xl font-bold text-gray-800">{vocabulary.chinese}
         </p>
       </div>
     </div>

@@ -1,8 +1,10 @@
+// src/components/ErrorStats.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { ErrorStats, Vocabulary } from '@/types';
+import { gameSessionStorage } from '@/lib/localStorage';
 import { OverallStats } from './ErrorStats/OverallStats';
 import { SortControls } from './ErrorStats/SortControls';
 import { ErrorStatsTable } from './ErrorStats/ErrorStatsTable';
@@ -21,10 +23,17 @@ export default function ErrorStatsComponent({ vocabulary, onBack }: ErrorStatsPr
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
+      // Get sessions from localStorage
+      const sessions = gameSessionStorage.getSessions();
+      
+      // Send to API for calculation
       const response = await fetch('/api/error-stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vocabulary })
+        body: JSON.stringify({ 
+          vocabulary,
+          sessions // Pass sessions from localStorage
+        })
       });
       
       const data = await response.json();
@@ -63,6 +72,14 @@ export default function ErrorStatsComponent({ vocabulary, onBack }: ErrorStatsPr
     wordsWithErrors: errorStats.filter(stat => stat.errorCount > 0).length
   } : null;
 
+  const clearAllData = () => {
+    if (confirm('This will clear all your learning progress and statistics. Are you sure?')) {
+      gameSessionStorage.clearSessions();
+      setErrorStats([]);
+      alert('All data cleared!');
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -84,20 +101,25 @@ export default function ErrorStatsComponent({ vocabulary, onBack }: ErrorStatsPr
             <p className="text-gray-600">Track your vocabulary learning progress</p>
           </div>
         </div>
-        <button
-          onClick={fetchStats}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchStats}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </button>
+          <button
+            onClick={clearAllData}
+            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Clear All Data
+          </button>
+        </div>
       </div>
 
       {/* Overall Statistics */}
       {overallStats && <OverallStats stats={overallStats} />}
-
-      {/* Sort Controls */}
-      <SortControls currentSort={sortBy} onSortChange={setSortBy} />
 
       {/* Statistics Table */}
       <ErrorStatsTable errorStats={sortedStats} />
